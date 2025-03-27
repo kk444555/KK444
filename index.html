@@ -1,0 +1,226 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KK NOTE</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: black;
+            color: white;
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .btn {
+            font-size: 20px;
+            padding: 15px 30px;
+            color: white;
+            background: linear-gradient(45deg, red, yellow, green, cyan, blue, violet);
+            border: none;
+            cursor: pointer;
+            border-radius: 10px;
+            width: 200px;
+        }
+        #notepad-container, #mediaPage, #cameraPage {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 90%;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            font-size: 18px;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .upload-btn {
+            font-size: 20px;
+            padding: 10px;
+            background: white;
+            border: 2px solid gray;
+            cursor: pointer;
+            border-radius: 10px;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .media-preview {
+            width: 120px;
+            height: 120px;
+            border-radius: 10px;
+            margin-top: 10px;
+            border: 2px solid white;
+            cursor: pointer;
+            object-fit: cover;
+        }
+        video.media-preview {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+        }
+        .back-btn {
+            font-size: 18px;
+            padding: 10px 20px;
+            background: red;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body onload="loadSavedData()">
+
+    <div class="container" id="home-screen">
+        <button class="btn" onclick="openNotepad()">KK NOTE</button>
+        <button class="btn" onclick="openMediaPage()">KK GALLERY</button>
+        <button class="btn" onclick="openCamera()">OREEE 📷</button>
+    </div>
+
+    <div id="notepad-container">
+        <textarea id="notepad" placeholder="अपना नोट यहाँ लिखें..."></textarea>
+        <button class="btn" onclick="saveNote()">Save</button>
+        <button class="back-btn" onclick="backToHome()">Back</button>
+    </div>
+
+    <div id="mediaPage">
+        <label for="mediaUpload" class="upload-btn">+ Upload</label>
+        <input type="file" id="mediaUpload" accept="image/*, video/*" multiple onchange="previewMedia(event)">
+        <div id="mediaContainer"></div>
+        <button class="back-btn" onclick="backToHome()">Back</button>
+    </div>
+
+    <div id="cameraPage">
+        <video id="camera" autoplay></video>
+        <button class="btn" onclick="capturePhoto()">Capture</button>
+        <canvas id="canvas"></canvas>
+        <div id="capturedPhotos"></div>
+        <button class="back-btn" onclick="backToHome()">Back</button>
+    </div>
+
+    <script>
+        function openNotepad() {
+            document.getElementById("home-screen").style.display = "none";
+            document.getElementById("notepad-container").style.display = "flex";
+            document.getElementById("notepad").value = localStorage.getItem("kk_note") || "";
+        }
+
+        function saveNote() {
+            let text = document.getElementById("notepad").value;
+            localStorage.setItem("kk_note", text);
+            alert("Note Saved Successfully!");
+            backToHome();
+        }
+
+        function openMediaPage() {
+            document.getElementById("home-screen").style.display = "none";
+            document.getElementById("mediaPage").style.display = "flex";
+        }
+
+        function previewMedia(event) {
+            let files = event.target.files;
+            let mediaContainer = document.getElementById("mediaContainer");
+            let savedMedia = JSON.parse(localStorage.getItem("savedMedia")) || [];
+
+            for (let i = 0; i < files.length; i++) {
+                let file = files[i];
+                let reader = new FileReader();
+
+                reader.onload = function(e) {
+                    let mediaElement;
+                    if (file.type.startsWith("image")) {
+                        mediaElement = document.createElement("img");
+                        mediaElement.src = e.target.result;
+                    } else if (file.type.startsWith("video")) {
+                        mediaElement = document.createElement("video");
+                        mediaElement.src = e.target.result;
+                        mediaElement.controls = true;
+                    }
+                    mediaElement.className = "media-preview";
+                    mediaContainer.appendChild(mediaElement);
+                    savedMedia.push({ type: file.type, src: e.target.result });
+                    localStorage.setItem("savedMedia", JSON.stringify(savedMedia));
+                };
+
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function openCamera() {
+            document.getElementById("home-screen").style.display = "none";
+            document.getElementById("cameraPage").style.display = "flex";
+            let video = document.getElementById("camera");
+
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => video.srcObject = stream)
+                .catch(err => console.error("Error accessing camera: ", err));
+        }
+
+        function capturePhoto() {
+            let video = document.getElementById("camera");
+            let canvas = document.getElementById("canvas");
+            let ctx = canvas.getContext("2d");
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            let dataUrl = canvas.toDataURL("image/png");
+
+            let savedPhotos = JSON.parse(localStorage.getItem("savedPhotos")) || [];
+            savedPhotos.push(dataUrl);
+            localStorage.setItem("savedPhotos", JSON.stringify(savedPhotos));
+
+            let img = document.createElement("img");
+            img.src = dataUrl;
+            img.className = "media-preview";
+            document.getElementById("capturedPhotos").appendChild(img);
+        }
+
+        function backToHome() {
+            document.getElementById("home-screen").style.display = "flex";
+            document.getElementById("notepad-container").style.display = "none";
+            document.getElementById("mediaPage").style.display = "none";
+            document.getElementById("cameraPage").style.display = "none";
+        }
+
+        function loadSavedData() {
+            let savedMedia = JSON.parse(localStorage.getItem("savedMedia")) || [];
+            let mediaContainer = document.getElementById("mediaContainer");
+            mediaContainer.innerHTML = "";
+
+            savedMedia.forEach(media => {
+                let mediaElement = media.type.startsWith("image") ? document.createElement("img") : document.createElement("video");
+                mediaElement.src = media.src;
+                mediaElement.className = "media-preview";
+                mediaContainer.appendChild(mediaElement);
+            });
+
+            let savedPhotos = JSON.parse(localStorage.getItem("savedPhotos")) || [];
+            let capturedPhotos = document.getElementById("capturedPhotos");
+            capturedPhotos.innerHTML = "";
+
+            savedPhotos.forEach(photo => {
+                let img = document.createElement("img");
+                img.src = photo;
+                img.className = "media-preview";
+                capturedPhotos.appendChild(img);
+            });
+        }
+    </script>
+
+</body>
+</html>
